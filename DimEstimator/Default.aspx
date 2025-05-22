@@ -69,6 +69,7 @@
                 Font-Bold="True"
                 EnableViewState="true" />
 
+
             </div>
         </div>
     </form>
@@ -80,6 +81,8 @@
     <script type="text/javascript">
         function showSpinner() {
             document.getElementById("loadingSpinner").style.display = "block";
+            document.getElementById("UploadedImage").style.display = "none";
+            
         }
     </script>
 </body>

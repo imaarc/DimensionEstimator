@@ -16,14 +16,27 @@ namespace DimEstimator
 
     public partial class _Default : System.Web.UI.Page
     {
-       
+
         protected void Page_Load(object sender, EventArgs e)
         {
-            Env.Load();
+            string envPath = Server.MapPath("~/.env");  
+
+            if (System.IO.File.Exists(envPath))
+            {
+                DotNetEnv.Env.Load(envPath);
+
+            }
+            else
+            {
+                Response.Write($".env file NOT found at: {envPath}<br>");
+            }
         }
+
+
 
         protected async void UploadButton_Click(object sender, EventArgs e)
         {
+
             if (ImageUpload.HasFile)
             {
                 string fileName = Path.GetFileName(ImageUpload.FileName);
@@ -38,7 +51,6 @@ namespace DimEstimator
                 string firebaseUrl = await firebaseHelper.UploadFileAsync(filePath);
 
                 File.Delete(filePath);
-
                 UploadedImage.ImageUrl = firebaseUrl;
                 UploadedImage.Visible = true;
 
@@ -71,9 +83,18 @@ namespace DimEstimator
         {
             using (HttpClient client = new HttpClient())
             {
+                // Set timeout longer than default (100 seconds)
+                client.Timeout = TimeSpan.FromSeconds(120);
+
                 string authToken = Environment.GetEnvironmentVariable("DIM_API_AUTH_TOKEN");
                 string serverName = Environment.GetEnvironmentVariable("DIM_API_SERVER_NAME");
 
+                if (string.IsNullOrEmpty(authToken) || string.IsNullOrEmpty(serverName))
+                {
+                    throw new InvalidOperationException("Authorization token or server name environment variables are missing.");
+                }
+
+                client.DefaultRequestHeaders.Clear();
                 client.DefaultRequestHeaders.Add("Authorization", authToken);
                 client.DefaultRequestHeaders.Add("ServerName", serverName);
 
@@ -82,12 +103,27 @@ namespace DimEstimator
 
                 HttpContent content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
 
-                HttpResponseMessage response = await client.PostAsync("https://test.xpl.ph/warehousex-v2/GPT/EstimateBoxDimensions", content);
-                response.EnsureSuccessStatusCode();
+                try
+                {
+                    HttpResponseMessage response = await client.PostAsync("https://test.xpl.ph/warehousex-v2/GPT/EstimateBoxDimensions", content);
+                    response.EnsureSuccessStatusCode();
 
-                return await response.Content.ReadAsStringAsync();
+                    return await response.Content.ReadAsStringAsync();
+                }
+                catch (TaskCanceledException ex)
+                {
+                    // This usually means a timeout
+                    // Consider logging or handling here
+                    throw new TimeoutException("The request timed out.", ex);
+                }
+                catch (Exception ex)
+                {
+                    // Log or rethrow
+                    throw new ApplicationException("Error calling dimension API.", ex);
+                }
             }
         }
+
 
 
     }
