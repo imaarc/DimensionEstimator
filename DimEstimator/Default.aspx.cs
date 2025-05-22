@@ -9,14 +9,17 @@ using System.Web.UI.WebControls;
 using System.Net.Http;
 using DimEstimator.Class;
 using Newtonsoft.Json;
+using DotNetEnv;
 
 namespace DimEstimator
 {
+
     public partial class _Default : System.Web.UI.Page
     {
+       
         protected void Page_Load(object sender, EventArgs e)
         {
-
+            Env.Load();
         }
 
         protected async void UploadButton_Click(object sender, EventArgs e)
@@ -68,13 +71,16 @@ namespace DimEstimator
         {
             using (HttpClient client = new HttpClient())
             {
-                client.DefaultRequestHeaders.Add("Authorization", "px12345678");
-                client.DefaultRequestHeaders.Add("ServerName", "TestServer");
+                string authToken = Environment.GetEnvironmentVariable("DIM_API_AUTH_TOKEN");
+                string serverName = Environment.GetEnvironmentVariable("DIM_API_SERVER_NAME");
+
+                client.DefaultRequestHeaders.Add("Authorization", authToken);
+                client.DefaultRequestHeaders.Add("ServerName", serverName);
 
                 var payload = new { ImageUrl = imagePath };
                 string json = new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(payload);
 
-                HttpContent content = new StringContent(json, System.Text.Encoding.UTF8, "application/json"); // sets Content-Type
+                HttpContent content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
 
                 HttpResponseMessage response = await client.PostAsync("https://test.xpl.ph/warehousex-v2/GPT/EstimateBoxDimensions", content);
                 response.EnsureSuccessStatusCode();
@@ -82,6 +88,7 @@ namespace DimEstimator
                 return await response.Content.ReadAsStringAsync();
             }
         }
+
 
     }
 }
