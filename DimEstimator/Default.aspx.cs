@@ -36,29 +36,42 @@ namespace DimEstimator
 
         protected async void UploadButton_Click(object sender, EventArgs e)
         {
+            string base64Image = CapturedImageData.Value;
 
-            if (ImageUpload.HasFile)
+            if (!string.IsNullOrEmpty(base64Image) && base64Image.StartsWith("data:image"))
             {
-                string fileName = Path.GetFileName(ImageUpload.FileName);
+                try
+                {
+                    // Strip off the data:image prefix
+                    string base64Data = base64Image.Substring(base64Image.IndexOf(",") + 1);
+                    byte[] imageBytes = Convert.FromBase64String(base64Data);
 
-                // Save file temporarily on server
-                string uploadFolder = Server.MapPath("~/Uploads/");
-                Directory.CreateDirectory(uploadFolder);
-                string filePath = Path.Combine(uploadFolder, fileName);
-                ImageUpload.SaveAs(filePath);
+                    // Generate a temporary file path
+                    string uploadFolder = Server.MapPath("~/Uploads/");
+                    Directory.CreateDirectory(uploadFolder);
+                    string fileName = $"snapshot_{Guid.NewGuid():N}.jpg";
+                    string filePath = Path.Combine(uploadFolder, fileName);
 
-                var firebaseHelper = new FirebaseStorageHelper();
-                string firebaseUrl = await firebaseHelper.UploadFileAsync(filePath);
+                    // Save the image temporarily
+                    File.WriteAllBytes(filePath, imageBytes);
 
-                File.Delete(filePath);
-                UploadedImage.ImageUrl = firebaseUrl;
-                UploadedImage.Visible = true;
+                    // Upload to Firebase
+                    var firebaseHelper = new FirebaseStorageHelper();
+                    string firebaseUrl = await firebaseHelper.UploadFileAsync(filePath);
 
-                string explanation = await CallDimensionAPIAsync(firebaseUrl);
-                var root = JsonConvert.DeserializeObject<DimObj>(explanation);
-                var estimate = JsonConvert.DeserializeObject<Estimate>(root.DimensionsEstimate);
+                    // Delete the temporary local file
+                    File.Delete(filePath);
 
-                ResultLabel.Text = $@"
+                    // Show the image
+                    UploadedImage.ImageUrl = firebaseUrl;
+                    UploadedImage.Visible = true;
+
+                    // Call your external API for dimension estimation
+                    string explanation = await CallDimensionAPIAsync(firebaseUrl);
+                    var root = JsonConvert.DeserializeObject<DimObj>(explanation);
+                    var estimate = JsonConvert.DeserializeObject<Estimate>(root.DimensionsEstimate);
+
+                    ResultLabel.Text = $@"
                 <div class='card shadow-sm'>
                     <div class='card-body'>
                         <h5 class='card-title'>Estimated Dimensions</h5>
@@ -70,13 +83,21 @@ namespace DimEstimator
                     </div>
                 </div>";
 
-                ResultLabel.Visible = true;
+                    ResultLabel.Visible = true;
+                }
+                catch (Exception ex)
+                {
+                    ResultLabel.Text = "An error occurred: " + ex.Message;
+                    ResultLabel.Visible = true;
+                }
             }
             else
             {
-                ResultLabel.Text = "Please upload an image first.";
+                ResultLabel.Text = "Please take a snapshot before uploading.";
+                ResultLabel.Visible = true;
             }
         }
+
 
 
         private async Task<string> CallDimensionAPIAsync(string imagePath)
