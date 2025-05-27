@@ -8,6 +8,9 @@
     <!-- Local Bootstrap -->
     <link href="~/Content/bootstrap.min.css" rel="stylesheet" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#dc3545" />
+    <link rel="apple-touch-icon" href="Images/xplRulerLogo1.png">
 
     <style>
         body, html {

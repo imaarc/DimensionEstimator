@@ -11,8 +11,8 @@ namespace DimEstimator.Class
     }
     public class Estimate
     {
-        public int length { get; set; }
-        public int width { get; set; }
-        public int height { get; set; }
+        public double length { get; set; }
+        public double width { get; set; }
+        public double height { get; set; }
     }
 }

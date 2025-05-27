@@ -1,0 +1,20 @@
+﻿{
+  "name": "Dimension Estimator",
+  "short_name": "Estimator",
+  "start_url": "/Default.aspx",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#dc3545",
+  "icons": [
+    {
+      "src": "/Images/xplRulerLogo1.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/Images/xplRulerLogo1.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ]
+}
