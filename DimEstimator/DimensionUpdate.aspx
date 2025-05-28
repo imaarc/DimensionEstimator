@@ -49,6 +49,14 @@
     </style>
 </head>
 <body>
+
+    <div id="loader" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.8); z-index:9999;">
+        <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:1.5rem;">
+            <span class="spinner-border text-danger"></span>
+            <div class="mt-2 text-center">Processing...</div>
+        </div>
+    </div>
+
     
 <form id="form1" runat="server">
 
@@ -72,17 +80,46 @@
                                 TextMode="MultiLine" 
                                 Rows="2" 
                                 Columns="20" />
-                            <asp:Button ID="checkBtn" runat="server" CssClass="btn btn-danger ms-3" Text="Check" OnClick="btnUpdate_Click" />
+                            <asp:Button ID="checkBtn" runat="server" CssClass="btn btn-danger ms-3" Text="Check" 
+                                OnClick="btnAdd_Click"
+                                OnClientClick="return checkTrackingNumber(event);" />
+
                         </div>
                     </div>
 
                     <div class="d-flex justify-content-between w-100 mt-4">
-                        <asp:Label ID="lblLength" runat="server" Text="Length: -" style="font-weight:bold;font-size:16px"/>
-                        <asp:Label ID="lblWidth" runat="server" Text="Width: -"  style="font-weight:bold;font-size:16px"/>
-                        <asp:Label ID="lblHeight" runat="server" Text="Height: -"  style="font-weight:bold;font-size:16px"/>
+                        <div style="width: 30%;">
+                            <asp:TextBox ID="txtLength" runat="server" CssClass="form-control"
+                                style="font-weight:bold; font-size:16px;" placeholder="Length" />
+                            <asp:RequiredFieldValidator ID="rfvLength" runat="server"
+                                ControlToValidate="txtLength"
+                                ErrorMessage="Length is required." ForeColor="Red" Display="Dynamic"
+                                ValidationGroup="UpdateGroup" />
+                        </div>
+
+                        <div style="width: 30%;">
+                            <asp:TextBox ID="txtWidth" runat="server" CssClass="form-control"
+                                style="font-weight:bold; font-size:16px;" placeholder="Width" />
+                            <asp:RequiredFieldValidator ID="rfvWidth" runat="server"
+                                ControlToValidate="txtWidth"
+                                ErrorMessage="Width is required." ForeColor="Red" Display="Dynamic"
+                                ValidationGroup="UpdateGroup" />
+                        </div>
+
+                        <div style="width: 30%;">
+                            <asp:TextBox ID="txtHeight" runat="server" CssClass="form-control"
+                                style="font-weight:bold; font-size:16px;" placeholder="Height" />
+                            <asp:RequiredFieldValidator ID="rfvHeight" runat="server"
+                                ControlToValidate="txtHeight"
+                                ErrorMessage="Height is required." ForeColor="Red" Display="Dynamic"
+                                ValidationGroup="UpdateGroup" />
+                        </div>
                     </div>
 
-                    <asp:Button ID="btnUpdate" runat="server" CssClass="btn btn-danger mt-3" Text="Update Dimensions" />
+
+
+
+                    <asp:Button ID="btnUpdate" runat="server" CssClass="btn btn-danger mt-3" ValidationGroup="UpdateGroup" Text="Update Dimensions" OnClick="btnUpdate_Click" OnClientClick="showLoader();"/>
 
                     <div class="mt-4">
                         <asp:Table ID="tblResults" runat="server" CssClass="table table-bordered">
@@ -172,11 +209,47 @@
             startScanner();
         });
 
-    
-
-       
-
     </script>
+
+    <script type="text/javascript">
+        function showLoader() {
+            document.getElementById('loader').style.display = 'block';
+        }
+
+        function hideLoader() {
+            document.getElementById('loader').style.display = 'none';
+        }
+
+        // Optional: If using UpdatePanel, hide loader after partial postback
+        Sys.Application.add_load(function () {
+            hideLoader();
+        });
+    </script>
+
+    <script>
+        var scannedTrackingNumbers = [];
+
+    <% if (ScannedItems != null)
+       {
+           var jsonTrackingNumbers = Newtonsoft.Json.JsonConvert.SerializeObject(
+               ScannedItems.Select(i => i.TrackingNumber).ToList());
+    %>
+        scannedTrackingNumbers = <%= jsonTrackingNumbers %>;
+    <% } %>
+
+    function checkTrackingNumber(event) {
+        var trackingNumber = $('#<%= txtQrResult.ClientID %>').val().trim();
+            if (scannedTrackingNumbers.includes(trackingNumber)) {
+                alert('Tracking number "' + trackingNumber + '" already exists in the list.');
+                event.preventDefault(); // Prevent postback
+                return false;
+            }
+            return true;
+        }
+    </script>
+
+
+
 
 
 </body>

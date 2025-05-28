@@ -38,32 +38,35 @@ namespace DimEstimator
                 string height = Request.QueryString["height"];
 
                 if (!string.IsNullOrEmpty(length))
-                    lblLength.Text = "Length: " + length;
+                    txtLength.Text =  length;
 
                 if (!string.IsNullOrEmpty(width))
-                    lblWidth.Text = "Width: " + width;
+                    txtWidth.Text =  width;
 
                 if (!string.IsNullOrEmpty(height))
-                    lblHeight.Text = "Height: " + height;
+                    txtHeight.Text =  height;
             }
 
         }
 
-        private List<ScannedItem> ScannedItems
+        public List<ScannedItem> ScannedItems
         {
             get
             {
-                return ViewState["ScannedItems"] as List<ScannedItem> ?? new List<ScannedItem>();
+                if (Session["ScannedItems"] == null)
+                    Session["ScannedItems"] = new List<ScannedItem>();
+                return (List<ScannedItem>)Session["ScannedItems"];
             }
             set
             {
-                ViewState["ScannedItems"] = value;
+                Session["ScannedItems"] = value;
             }
         }
 
 
 
-        protected void btnUpdate_Click(object sender, EventArgs e)
+
+        protected void btnAdd_Click(object sender, EventArgs e)
         {
             Page.RegisterAsyncTask(new PageAsyncTask(async () =>
             {
@@ -77,6 +80,18 @@ namespace DimEstimator
                 {
                     var list = ScannedItems;
 
+                    // Check if tracking number already exists in the list
+                    bool alreadyExists = list.Any(item => item.TrackingNumber == trackingNumber);
+
+                    if (alreadyExists)
+                    {
+                        // Show alert that it already exists, do not add again
+                        ScriptManager.RegisterStartupScript(this, GetType(), "alreadyExistsAlert",
+                            $"alert('Tracking number \"{trackingNumber}\" already exists in the list.');", true);
+                        return;
+                    }
+
+                    // Add new scanned item if not exists
                     list.Add(new ScannedItem
                     {
                         Id = resp.data.id,
@@ -88,11 +103,56 @@ namespace DimEstimator
                     ScannedItems = list;
 
                     BindTable();
+
+                    // Add to client side array so future checks see it too
+                    string script = $"scannedTrackingNumbers.push('{trackingNumber}');";
+                    ScriptManager.RegisterStartupScript(this, GetType(), "updateClientList", script, true);
                 }
             }));
 
             Page.ExecuteRegisteredAsyncTasks();
         }
+
+
+        protected async void btnUpdate_Click(object sender, EventArgs e)
+        {
+            List<ScannedItem> allScanned = ScannedItems;
+
+            // Parse actual values from textboxes
+            if (!int.TryParse(txtLength.Text.Trim(), out int length) ||
+                !int.TryParse(txtWidth.Text.Trim(), out int width) ||
+                !int.TryParse(txtHeight.Text.Trim(), out int height))
+            {
+                // Optional: Show alert for invalid input
+                ScriptManager.RegisterStartupScript(this, GetType(), "invalidInput", "alert('Please enter valid numeric dimensions.');", true);
+                return;
+            }
+
+            // Perform updates
+            foreach (var item in allScanned)
+            {
+                if (!item.Status.Equals("Not Existing"))
+                {
+                    await updateDimensions(item, length, width, height);
+                }
+            }
+
+            // ✅ Clear scanned items
+            ScannedItems.Clear(); // If ScannedItems is a property that references session or view state, this clears it
+
+            // ✅ Clear the table if you use it to show scanned results
+            tblResults.Rows.Clear();
+
+            // ✅ Optionally clear the textbox fields
+            txtLength.Text = "";
+            txtWidth.Text = "";
+            txtHeight.Text = "";
+
+            // ✅ Show success alert
+            ScriptManager.RegisterStartupScript(this, GetType(), "updateSuccess", "alert('Dimensions successfully updated.');", true);
+        }
+
+
 
         private void BindTable()
         {
@@ -190,7 +250,57 @@ namespace DimEstimator
             }
         }
 
-      
+        private async Task<bool> updateDimensions(ScannedItem item, int length, int width, int height)
+        {
+            using (HttpClient client = new HttpClient())
+            {
+                client.Timeout = TimeSpan.FromSeconds(120);
+
+                string authToken = Environment.GetEnvironmentVariable("DIM_API_AUTH_TOKEN");
+                string serverName = Environment.GetEnvironmentVariable("DIM_API_SERVER_NAME");
+
+                if (string.IsNullOrEmpty(authToken) || string.IsNullOrEmpty(serverName))
+                {
+                    throw new InvalidOperationException("Authorization token or server name environment variables are missing.");
+                }
+
+                client.DefaultRequestHeaders.Clear();
+                client.DefaultRequestHeaders.Add("Authorization", authToken);
+                client.DefaultRequestHeaders.Add("ServerName", serverName);
+
+                bool isChild = item.Type == "Item";
+
+                var payload = new
+                {
+                    id = item.Id,
+                    isChild = isChild,
+                    length = length,  
+                    width = width,
+                    height = height    
+                };
+
+                string json = JsonConvert.SerializeObject(payload);
+                HttpContent content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+
+                try
+                {
+                    HttpResponseMessage response = await client.PostAsync("https://test.xpl.ph/warehousex-v2/Logistics/updateDimensions", content);
+                    response.EnsureSuccessStatusCode();
+                    return true;
+                }
+                catch (TaskCanceledException ex)
+                {
+                    throw new TimeoutException("The request timed out.", ex);
+                }
+                catch (Exception ex)
+                {
+                    throw new ApplicationException("Error calling dimension API.", ex);
+                }
+            }
+        }
+
+
+
 
 
 
