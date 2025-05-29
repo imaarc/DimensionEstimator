@@ -10,6 +10,8 @@ using System.Net.Http;
 using DimEstimator.Class;
 using Newtonsoft.Json;
 using DotNetEnv;
+using System.Diagnostics;
+using System.Text;
 
 namespace DimEstimator
 {
@@ -103,18 +105,20 @@ namespace DimEstimator
 
         private async Task<string> CallDimensionAPIAsync(string imagePath)
         {
-            using (HttpClient client = new HttpClient())
+            HttpClientHandler handler = new HttpClientHandler
             {
-                // Set timeout longer than default (100 seconds)
-                client.Timeout = TimeSpan.FromSeconds(120);
+                UseProxy = false // Disable system proxy if not needed
+            };
+
+            using (HttpClient client = new HttpClient(handler))
+            {
+                client.Timeout = TimeSpan.FromSeconds(60); // Adjust as needed
 
                 string authToken = Environment.GetEnvironmentVariable("DIM_API_AUTH_TOKEN");
                 string serverName = Environment.GetEnvironmentVariable("DIM_API_SERVER_NAME");
 
                 if (string.IsNullOrEmpty(authToken) || string.IsNullOrEmpty(serverName))
-                {
                     throw new InvalidOperationException("Authorization token or server name environment variables are missing.");
-                }
 
                 client.DefaultRequestHeaders.Clear();
                 client.DefaultRequestHeaders.Add("Authorization", authToken);
@@ -122,29 +126,30 @@ namespace DimEstimator
 
                 var payload = new { ImageUrl = imagePath };
                 string json = new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(payload);
-
-                HttpContent content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+                HttpContent content = new StringContent(json, Encoding.UTF8, "application/json");
 
                 try
                 {
+                    var stopwatch = Stopwatch.StartNew();
                     HttpResponseMessage response = await client.PostAsync("https://test.xpl.ph/warehousex-v2/GPT/EstimateBoxDimensions", content);
-                    response.EnsureSuccessStatusCode();
+                    stopwatch.Stop();
 
+                    Console.WriteLine($"Dimension API call took {stopwatch.ElapsedMilliseconds} ms");
+
+                    response.EnsureSuccessStatusCode();
                     return await response.Content.ReadAsStringAsync();
                 }
                 catch (TaskCanceledException ex)
                 {
-                    // This usually means a timeout
-                    // Consider logging or handling here
                     throw new TimeoutException("The request timed out.", ex);
                 }
                 catch (Exception ex)
                 {
-                    // Log or rethrow
                     throw new ApplicationException("Error calling dimension API.", ex);
                 }
             }
         }
+
 
 
 
