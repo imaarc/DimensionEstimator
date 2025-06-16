@@ -76,10 +76,14 @@
                             <asp:TextBox 
                                 ID="txtQrResult" 
                                 runat="server" 
+                                ClientIDMode="Static" 
                                 CssClass="textbox form-control textboxTrackingNumber" 
                                 TextMode="MultiLine" 
                                 Rows="2" 
-                                Columns="20" />
+                                Columns="20"
+                            />
+
+
                             <asp:Button ID="checkBtn" runat="server" CssClass="btn btn-danger ms-3" Text="Check" 
                                 OnClick="btnAdd_Click"
                                 OnClientClick="return checkTrackingNumber(event);" />
@@ -147,69 +151,55 @@
     <script src="Scripts/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 
-    <script type="text/javascript">
-        let html5QrCode;
-        let isScanning = false;
+   <script type="text/javascript">
+       let html5QrCode;
 
-        const startScanner = () => {
-            html5QrCode = new Html5Qrcode("reader");
+       const startScanner = () => {
+           html5QrCode = new Html5Qrcode("reader");
 
-            const qrCodeConfig = {
-                fps: 10,
-                qrbox: function (viewfinderWidth, viewfinderHeight) {
-                    const edge = Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * 0.8);
-                    return { width: edge, height: edge }; 
-                }
-            };
+           const qrCodeConfig = {
+               fps: 10,
+               qrbox: function (viewfinderWidth, viewfinderHeight) {
+                   const edge = Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * 0.8);
+                   return { width: edge, height: edge };
+               }
+           };
+
+           html5QrCode.start(
+               { facingMode: "environment" },
+               qrCodeConfig,
+               qrCodeSuccessCallback,
+               qrCodeErrorCallback
+           ).then(() => {
+               console.log("Scanner started.");
+           }).catch(err => {
+               console.error("Camera start failed:", err);
+           });
+       };
+
+       const qrCodeSuccessCallback = (decodedText, decodedResult) => {
+           console.log("Scanned:", decodedText);
+           document.getElementById('txtQrResult').value = decodedText;
+
+           // No pause or resume here — scanner keeps running
+           // Optional: trigger any action here like submitting a form or beeping
+       };
+
+       const qrCodeErrorCallback = errorMessage => {
+           // Optional error logging
+           // console.log("Scan error:", errorMessage);
+       };
+
+       $(document).ready(function () {
+           startScanner();
+       });
+   </script>
 
 
 
-            html5QrCode.start(
-                { facingMode: "environment" }, 
-                qrCodeConfig,
-                qrCodeSuccessCallback,
-                qrCodeErrorCallback
-            ).catch(err => {
-                console.error("Camera start failed:", err);
-            });
-        };
-
-        const qrCodeSuccessCallback = (decodedText, decodedResult) => {
-            if (isScanning) return; 
-            isScanning = true;
-
-            console.log("Scanned:", decodedText);
-
-            document.getElementById('<%= txtQrResult.ClientID %>').value = decodedText;
 
 
-            html5QrCode.pause()
-                .then(() => {
-                    setTimeout(() => {
-                        html5QrCode.resume()
-                            .then(() => {
-                                isScanning = false;
-                            })
-                            .catch(err => {
-                                console.error("Resume failed:", err);
-                                isScanning = false;
-                            });
-                    }, 1000); 
-                })
-                .catch(err => {
-                    console.error("Pause failed:", err);
-                    isScanning = false;
-                });
-        };
 
-        const qrCodeErrorCallback = errorMessage => {
-        };
-
-        $(document).ready(function () {
-            startScanner();
-        });
-
-    </script>
 
     <script type="text/javascript">
         function showLoader() {

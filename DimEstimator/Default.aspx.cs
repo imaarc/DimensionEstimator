@@ -20,7 +20,7 @@ namespace DimEstimator
     public partial class _Default : System.Web.UI.Page
     {
 
-        protected async void Page_Load(object sender, EventArgs e)
+        protected void Page_Load(object sender, EventArgs e)
         {
             string envPath = Server.MapPath("~/.env");  
 
@@ -34,11 +34,6 @@ namespace DimEstimator
                 Response.Write($".env file NOT found at: {envPath}<br>");
             }
 
-            if (!IsPostBack)
-            {
-                string testImageUrl = "https://firebasestorage.googleapis.com/v0/b/xpl-app.appspot.com/o/dimPicsEstimator%2Fe1b0614b-cd44-4f97-94e1-958b89f0c995.jpg?alt=media&token=46637c50-9c84-408b-bf54-78de46683056";
-                await ProcessImageUrlAsync(testImageUrl);
-            }
         }
 
         private async Task ProcessImageUrlAsync(string imageUrl)
@@ -48,23 +43,27 @@ namespace DimEstimator
                 UploadedImage.ImageUrl = imageUrl;
                 UploadedImage.Visible = true;
 
-                // Call your dimension estimator API
                 string explanation = await CallDimensionAPIAsync(imageUrl);
-                var root = JsonConvert.DeserializeObject<DimObj>(explanation);
-                var estimate = JsonConvert.DeserializeObject<Estimate>(root.DimensionsEstimate);
+
+                if (string.IsNullOrEmpty(explanation))
+                    throw new Exception("Dimension API returned null or empty response.");
+
+                var estimate = JsonConvert.DeserializeObject<Estimate>(explanation);
+                if (estimate == null)
+                    throw new Exception("Failed to deserialize Estimate from response.");
 
                 ResultLabel.Text = $@"
-            <div class='card shadow-sm'>
-                <div class='card-body'>
-                    <h5 class='card-title'>Estimated Dimensions</h5>
-                    <ul class='list-group list-group-flush'>
-                        <li class='list-group-item'><strong>Length:</strong> {estimate.length} inches</li>
-                        <li class='list-group-item'><strong>Width:</strong> {estimate.width} inches</li>
-                        <li class='list-group-item'><strong>Height:</strong> {estimate.height} inches</li>
-                    </ul>
-                </div>
-                <a href='DimensionUpdate.aspx?length={estimate.length}&&width={estimate.width}&&height={estimate.height}' class='btn btn-danger'>Tag dimensions tracking number</a>
-            </div>";
+                <div class='card shadow-sm'>
+                    <div class='card-body'>
+                        <h5 class='card-title'>Estimated Dimensions</h5>
+                        <ul class='list-group list-group-flush'>
+                            <li class='list-group-item'><strong>Length:</strong> {estimate.length} inches</li>
+                            <li class='list-group-item'><strong>Width:</strong> {estimate.width} inches</li>
+                            <li class='list-group-item'><strong>Height:</strong> {estimate.height} inches</li>
+                        </ul>
+                    </div>
+                    <a href='DimensionUpdate.aspx?length={estimate.length}&&width={estimate.width}&&height={estimate.height}' class='btn btn-danger'>Tag dimensions tracking number</a>
+                </div>";
 
                 ResultLabel.Visible = true;
             }
@@ -74,6 +73,7 @@ namespace DimEstimator
                 ResultLabel.Visible = true;
             }
         }
+
 
 
 
@@ -113,8 +113,7 @@ namespace DimEstimator
 
                     // Call your external API for dimension estimation
                     string explanation = await CallDimensionAPIAsync(firebaseUrl);
-                    var root = JsonConvert.DeserializeObject<DimObj>(explanation);
-                    var estimate = JsonConvert.DeserializeObject<Estimate>(root.DimensionsEstimate);
+                    var estimate = JsonConvert.DeserializeObject<Estimate>(explanation);
 
                     ResultLabel.Text = $@"
                 <div class='card shadow-sm'>

@@ -353,7 +353,9 @@
     <Content Include="Content\bootstrap-grid.css.map" />
     <Content Include="Images\xRulerLogo.webp" />
     <Content Include="manifest.json" />
+    <None Include="Properties\PublishProfiles\XRuler.pubxml" />
     <None Include="Scripts\jquery-3.7.0.intellisense.js" />
+    <Content Include="Scripts\html5-qrcode.min.js" />
     <Content Include="Scripts\jquery-3.7.0.js" />
     <Content Include="Scripts\jquery-3.7.0.min.js" />
     <Content Include="Scripts\jquery-3.7.0.slim.js" />
